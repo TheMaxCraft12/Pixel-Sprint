@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#081a2c"><title>Pixel Sprint – Shop Edition</title>
+<style>
+*{box-sizing:border-box;touch-action:manipulation}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#081a2c;color:#f5f8ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+button{font:inherit;font-weight:900;cursor:pointer;border:2px solid #0b1626;border-radius:12px;color:#fff;background:linear-gradient(#28649a,#123454);box-shadow:0 4px 0 #06101c;padding:10px}
+#wrap{position:relative;width:100vw;height:100dvh;max-width:1000px;max-height:760px;margin:auto;overflow:hidden;background:#76cef4}
+canvas{width:100%;height:100%;display:block}
+#hud{position:absolute;top:8px;left:8px;right:8px;display:flex;justify-content:space-between;gap:6px;pointer-events:none;flex-wrap:wrap}
+.hudbox{background:#07192be8;border:2px solid #3975a6;border-radius:12px;padding:6px 10px;font-weight:900;text-shadow:0 2px #0008}
+#shopQuick{pointer-events:auto;background:linear-gradient(#ffe66a,#ffad1f);color:#17202c;border-color:#8b4b08;padding:6px 13px}
+#hint{position:absolute;top:62px;left:50%;transform:translateX(-50%);background:#07192bc9;border-radius:9px;padding:5px 10px;font-size:12px;white-space:nowrap}
+#controls{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;pointer-events:none}
+.group{display:flex;gap:10px}.ctrl{pointer-events:auto;width:clamp(58px,15vw,76px);height:clamp(58px,15vw,76px);border-radius:20px;font-size:25px;background:#102b47c9;border:2px solid #d4ecff}
+#jump{border-radius:50%;background:linear-gradient(#ffe66a,#ffab19);color:#17202c;border-color:#fff2a7;width:clamp(68px,18vw,88px);height:clamp(68px,18vw,88px)}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#061322b9;padding:12px;overflow:auto}
+.panel{width:min(900px,100%);max-height:96%;overflow:auto;background:linear-gradient(145deg,#0b2a47f7,#061729fa);border:3px solid #3183b9;border-radius:20px;padding:clamp(14px,3vw,24px);box-shadow:0 15px 40px #0008}
+h1{font-size:clamp(26px,6vw,42px);line-height:1.05;margin:0 0 7px;color:#ffe05c;text-shadow:0 3px #8d4200;letter-spacing:.5px}
+h2{margin:0 0 6px;color:#9ed4ff;font-size:clamp(19px,4vw,26px)}p{margin:6px 0 14px;color:#d6eaff}
+.menuBtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.primary{background:linear-gradient(#ffe86b,#ffb31f);color:#17202c;border-color:#ffec94;font-size:17px;padding:12px 18px}.secondary{padding:12px 18px}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}.wallet{display:flex;gap:8px;flex-wrap:wrap}.coin{color:#ffdb44}
+.shopLayout{display:grid;grid-template-columns:130px 1fr;gap:12px}
+.tabs{display:flex;flex-direction:column;gap:8px}.tab{min-height:48px;text-align:left}.tab.active{background:linear-gradient(#ffe86b,#ffb51e);color:#182130;border-color:#fff0a0}
+.items{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.item{background:linear-gradient(145deg,#12385a,#071a2d);border:2px solid #2b6c9b;border-radius:13px;padding:10px 7px;text-align:center;min-width:0}
+.item.selected{border:3px solid #ffe66a;padding:9px 6px;box-shadow:0 0 0 2px #ffbf3b55}
+.emoji{font-size:clamp(30px,7vw,48px);line-height:1.25;filter:drop-shadow(0 3px 1px #0007)}
+.item b{display:block;font-size:clamp(12px,2.4vw,16px);margin:3px 0}.desc{font-size:clamp(10px,2vw,13px);color:#a8d6ff;min-height:34px;line-height:1.25}
+.price{margin-top:8px;width:100%;padding:7px 4px;background:linear-gradient(#ffe66a,#ffb01b);color:#182130;border-color:#ffed9a}
+.detail{grid-column:1/-1;background:#071b2ee8;border:2px solid #2a6c9b;border-radius:14px;padding:13px;display:grid;grid-template-columns:70px 1fr;gap:12px;align-items:center;margin-top:2px}
+.detail .big{font-size:58px;text-align:center}.detail p{margin:4px 0;font-size:13px}
+#message{min-height:20px;color:#ffe66a;font-weight:800;margin-top:7px}
+#toast{position:absolute;top:24%;left:50%;transform:translateX(-50%);background:#06182bd9;border-radius:12px;padding:8px 14px;font-weight:900;opacity:0;pointer-events:none}
+@media(max-width:520px){.shopLayout{grid-template-columns:1fr}.tabs{flex-direction:row;overflow-x:auto}.tab{white-space:nowrap;min-height:40px;text-align:center;padding:8px}.items{gap:6px}.item{padding:7px 4px}.item.selected{padding:6px 3px}.detail{grid-template-columns:55px 1fr}.detail .big{font-size:45px}.panel{padding:12px}.desc{min-height:38px}}
+</style></head>
+<body><div id="wrap">
+<canvas id="game"></canvas>
+<div id="hud"><div class="hudbox">⭐ <span id="score">0</span></div><div class="hudbox">❤️ <span id="lives">3</span></div><div class="hudbox coin">🪙 <span id="coins">150</span></div><button id="pauseQuick">Ⅱ PAUSE</button><button id="shopQuick">🛒 SHOP</button></div>
+<div id="hint">◀ ▶ laufen · ⬆ springen · ⚡ Dash · Münzen sammeln · Doppelsprung verfügbar</div>
+<div id="toast"></div>
+<div id="controls"><div class="group"><button class="ctrl" id="left">◀</button><button class="ctrl" id="right">▶</button></div><div class="group"><button class="ctrl" id="dash">⚡</button><button class="ctrl" id="jump">⬆</button></div></div>
+<div id="overlay"><div class="panel" id="panel"></div></div>
+</div>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d');
+let W=innerWidth,H=innerHeight,dpr=1, running=false,screen='home',score=0,coins=150,lives=3,level=1,camera=0,cameraY=0,last=0,keys={left:false,right:false},jumpQueued=false,toastTimer=0;
+const inventory={mushroom:0,star:0,life:0,shoes:0,shield:0,magnet:0};
+const items=[
+{id:'mushroom',name:'Super-Pilz',icon:'🍄',price:100,desc:'Macht dich kurz unverwundbar.',effect:'Größer + Schutz für 10 Sekunden'},
+{id:'star',name:'Stern',icon:'⭐',price:150,desc:'Ein kurzer Moment Unbesiegbarkeit.',effect:'Schutz für 12 Sekunden'},
+{id:'life',name:'Extra-Leben',icon:'❤️',price:200,desc:'Fügt ein zusätzliches Leben hinzu.',effect:'+1 Leben sofort'},
+{id:'shoes',name:'Schnellschuhe',icon:'👟',price:150,desc:'Renne für kurze Zeit schneller.',effect:'Mehr Tempo für 15 Sekunden'},
+{id:'shield',name:'Schutzschild',icon:'🛡️',price:120,desc:'Fängt einen Treffer ab.',effect:'Blockt den nächsten Treffer'},
+{id:'magnet',name:'Magnet',icon:'🧲',price:180,desc:'Zieht Münzen automatisch an.',effect:'Münzen-Magnet für 15 Sekunden'}
+];
+let selected='mushroom',platforms=[],stars=[],enemies=[],player,goal,worldWidth,groundY,effects={big:0,invuln:0,speed:0,magnet:0,shield:0},checkpoint=50,dashCooldown=0,landFx={x:0,y:0,life:0};
+function resize(){const r=$('wrap').getBoundingClientRect();ctx.imageSmoothingEnabled=false;dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);W=r.width;H=r.height;ctx.setTransform(dpr,0,0,dpr,0,0);if(!player)makeLevel(1);draw()}
+function makeLevel(n){
+ level=n;camera=0;cameraY=0;groundY=H*.78;worldWidth=4300+n*300;
+ // Frequent, reachable platforms: gaps are deliberately short.
+ platforms=[{x:0,y:groundY,w:360,h:100}];
+ const layout=[
+   [390,-42,150],[565,-85,145],[735,-48,155],[920,-115,140],[1085,-62,165],
+   [1280,-30,150],[1450,-92,150],[1625,-135,145],[1795,-62,170],[1990,-100,150],
+   [2165,-38,165],[2355,-120,145],[2525,-72,160],[2710,-35,170],
+   [2905,-105,150],[3080,-145,145],[3250,-55,170],[3445,-95,155],
+   [3625,-35,170],[3820,-105,150],[4000,-55,190]
+ ];
+ layout.forEach(([x,off,w],i)=>platforms.push({x,y:groundY+off-(n>=2&&i%5===2?35:0),w,h:22}));
+ // Lücken kurz vor dem Ziel schließen: sichere Brückenplattformen bis zum Zielboden.
+ let bridgeX=4190; const goalPlatformX=worldWidth-260;
+ while(bridgeX+175<goalPlatformX){platforms.push({x:bridgeX+12,y:groundY-35,w:175,h:22});bridgeX+=190;}
+ platforms.push({x:worldWidth-260,y:groundY,w:320,h:100});
+ if(n>=2){
+   platforms.push({x:800,y:groundY-175,w:100,h:20},{x:1700,y:groundY-205,w:110,h:20},{x:2700,y:groundY-180,w:110,h:20},{x:3550,y:groundY-190,w:110,h:20});
+ }
+ if(n>=3){
+   platforms.push({x:1150,y:groundY-185,w:105,h:20},{x:2250,y:groundY-200,w:105,h:20},{x:3200,y:groundY-190,w:105,h:20});
+ }
+ platforms.sort((a,b)=>a.x-b.x);
+ stars=[];
+ platforms.forEach((p,i)=>{if(i>0&&i<platforms.length-1){stars.push({x:p.x+p.w/2,y:p.y-30,got:false,type:'star'});if(i%2===0)stars.push({x:p.x+p.w*.78,y:p.y-27,got:false,type:'coin'})}});
+ for(let x=260;x<worldWidth-320;x+=225)stars.push({x,y:groundY-35,got:false,type:'coin'});
+ enemies=[];
+ // Schleimis laufen auf der Oberseite einer Plattform statt darunter zu spawnen.
+ for(let x=650;x<worldWidth-350;x+=620){
+   const p=platforms.filter(p=>x>=p.x+25&&x<=p.x+p.w-25).sort((a,b)=>Math.abs(a.y-groundY)-Math.abs(b.y-groundY))[0];
+   if(p) enemies.push({x,y:p.y-13,min:p.x+22,max:p.x+p.w-22,dir:1,v:45+n*5,dead:false});
+ }
+ goal={x:worldWidth-150,y:groundY-105};
+ player={x:50,y:groundY-55,w:28,h:42,vx:0,vy:0,onGround:false,invuln:1,jumps:0};
+ checkpoint=50;
+ // Checkpoints are placed on safe, wide platforms throughout each world.
+ const cpXs=[1050,2050,3100,worldWidth-600];
+ window.gameCheckpoints=cpXs.map((x,i)=>({x,y:groundY-55,active:false,index:i+1}));
+}
+function updateHud(){$('score').textContent=score;$('coins').textContent=coins;$('lives').textContent=lives}
+function showHome(){screen='home';running=false;$('overlay').style.display='flex';$('panel').innerHTML=`<h1>PIXEL SPRINT</h1><h2>Jump ’n’ Run – Deluxe Edition · 15 Level</h2><p>Spring über Abgründe, weiche Schleim-Monster aus und sammle Münzen. Im Shop kaufst du Power-ups für deinen nächsten Lauf.</p><p>🪙 Startguthaben: 150 Münzen</p><div class="menuBtns"><button class="primary" id="play">▶ SPIEL STARTEN</button><button id="openShop" class="secondary">🛒 SHOP ÖFFNEN</button></div>`;$('play').onclick=startGame;$('openShop').onclick=()=>showShop('mushroom')}
+function startGame(){if(!player)makeLevel(1);running=true;screen='game';$('overlay').style.display='none';toast('Los geht’s!')}
+function pauseGame(){if(screen!=='game'||!running)return;running=false;screen='paused';$('overlay').style.display='flex';$('panel').innerHTML=`<h1>PAUSE</h1><p>Verschnaufpause. Die Schleim-Monster warten vermutlich nicht.</p><div class="menuBtns"><button class="primary" id="resume">▶ WEITERSPIELEN</button><button id="pauseShop">🛒 SHOP</button><button id="pauseHome">⌂ HAUPTMENÜ</button></div>`;$('resume').onclick=startGame;$('pauseShop').onclick=()=>showShop();$('pauseHome').onclick=showHome}
+function showShop(id=selected){selected=id;screen='shop';running=false;$('overlay').style.display='flex';renderShop()}
+function renderShop(){const it=items.find(x=>x.id===selected)||items[0];$('panel').innerHTML=`<div class="topline"><div><h1>🛒 SHOP</h1><p style="margin:0">Wähle ein Power-up für deinen Lauf.</p></div><div class="wallet"><div class="hudbox coin">🪙 ${coins}</div><div class="hudbox">❤️ ${lives}</div></div></div><div class="shopLayout"><div class="tabs"><button class="tab active">⭐ Power-ups</button><button class="tab" id="coinTab">🪙 Münzen</button><button class="tab" id="lifeTab">❤️ Leben</button><button class="tab" id="skinTab">🎭 Skins</button></div><div class="items">${items.map(x=>`<div class="item ${x.id===selected?'selected':''}"><div class="emoji">${x.icon}</div><b>${x.name}</b><div class="desc">${x.desc}</div><button class="price" data-select="${x.id}">🪙 ${x.price}</button></div>`).join('')}</div><div class="detail"><div class="big">${it.icon}</div><div><h2>${it.name}</h2><p>${it.desc}</p><p>Effekt: <b>${it.effect}</b></p><p>Besitzt: <b>${inventory[it.id]||0}</b></p><button class="primary" id="buy">🪙 ${it.price} – KAUFEN</button><div id="message"></div></div></div></div><div class="menuBtns"><button id="back" class="secondary">← ZURÜCK</button><button id="continue" class="primary">▶ ZUM SPIEL</button></div>`;
+document.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>{selected=b.dataset.select;renderShop()});
+$('buy').onclick=()=>buy(it);$('back').onclick=()=>{if(player&&level>0)startGame();else showHome()};$('continue').onclick=()=>{if(player)startGame();else startGame()};
+$('coinTab').onclick=()=>message('Sammle goldene Münzen im Level. Der Münzvorrat bleibt beim Wechseln der Welten erhalten.');
+$('lifeTab').onclick=()=>{selected='life';renderShop('life')};$('skinTab').onclick=()=>message('Weitere Skins kommen in einem späteren Update. Der Held ist momentan im klassischen Pixel-Look unterwegs.')}
+function message(t){const m=$('message');if(m)m.textContent=t}
+function buy(it){if(coins<it.price){message('Zu wenig Münzen! Sammle mehr im Level.');return}coins-=it.price;inventory[it.id]++;if(it.id==='life'){lives++;inventory.life--}if(it.id==='mushroom'){effects.big=10;effects.invuln=10}if(it.id==='star')effects.invuln=12;if(it.id==='shoes')effects.speed=15;if(it.id==='shield')effects.shield++;if(it.id==='magnet')effects.magnet=15;updateHud();renderShop(it.id);message(it.id==='life'?'Gekauft! +1 Leben.':'Gekauft! Wird sofort aktiviert.')}
+function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;toastTimer=1.5}
+function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+function draw(){ctx.setTransform(dpr,0,0,dpr,0,0);
+ // Crisp pixel-art sky and parallax hills
+ rect(0,0,W,H,'#72c9f4');rect(0,H*.48,W,H*.52,'#a9e8ff');
+ for(let i=0;i<8;i++){let x=((i*155-camera*.12)%(W+180))-90,y=45+(i%3)*38;
+   rect(x+12,y,34,10,'#f5fdff');rect(x,y+10,62,14,'#f5fdff');rect(x+9,y+24,44,6,'#d8f5ff');
+ }
+ for(let i=0;i<8;i++){let x=((i*185-camera*.2)%(W+240))-120;let base=H*.76;
+   rect(x,base-40,80,40,i%2?'#5ab99a':'#4aa88d');rect(x+18,base-66,48,26,i%2?'#5ab99a':'#4aa88d');rect(x+32,base-82,22,16,'#5ab99a');
+ }
+ // tiny pixel stars / flowers in the scenery
+ for(let i=0;i<28;i++){let x=(i*73-camera*.35)%(W+10);let y=H*.68+(i%4)*9;rect(x,y,3,3,i%2?'#fff07b':'#ffffff')}
+ ctx.save();ctx.translate(-camera,-cameraY);platforms.forEach((p,idx)=>{rect(p.x,p.y,p.w,p.h,'#79503b');rect(p.x,p.y,p.w,8,'#43c95c');rect(p.x,p.y+8,p.w,4,'#2c8c4c');
+   for(let x=p.x+5;x<p.x+p.w;x+=16){rect(x,p.y+16,7,4,'#966044');rect(x+6,p.y+30,5,4,'#68412f')}
+   // little grass tufts along platform edge
+   for(let x=p.x+8;x<p.x+p.w-4;x+=22){rect(x,p.y-4,4,4,'#35b84f');rect(x+4,p.y-2,3,2,'#66e66d')}
+ });
+stars.forEach(s=>{if(s.got)return;let y=s.y+Math.sin(performance.now()/220+s.x)*3;if(s.type==='coin'){ctx.fillStyle='#ffcf32';ctx.beginPath();ctx.arc(s.x,y,10,0,7);ctx.fill();ctx.strokeStyle='#fff19a';ctx.lineWidth=3;ctx.stroke()}else{ctx.fillStyle='#ffe04b';ctx.font='24px sans-serif';ctx.fillText('⭐',s.x-12,y+8)}});
+enemies.forEach(e=>{if(e.dead)return;rect(e.x-18,e.y-14,36,25,'#542b86');rect(e.x-15,e.y-17,30,25,'#8a4ac8');rect(e.x-20,e.y-5,40,15,'#a65cdb');rect(e.x-10,e.y-8,7,8,'#fff7d6');rect(e.x+4,e.y-8,7,8,'#fff7d6');rect(e.x-8,e.y-6,4,5,'#17243b');rect(e.x+6,e.y-6,4,5,'#17243b');rect(e.x-12,e.y+9,8,4,'#542b86');rect(e.x+5,e.y+9,8,4,'#542b86')});
+if(landFx.life>0){ctx.globalAlpha=Math.min(1,landFx.life/.18);rect(landFx.x-17,landFx.y-3,7,3,'#f2f0c4');rect(landFx.x+8,landFx.y-5,8,3,'#f2f0c4');ctx.globalAlpha=1;}
+(window.gameCheckpoints||[]).forEach(cp=>{rect(cp.x,cp.y-35,5,35,'#f5f7ff');rect(cp.x+5,cp.y-35,34,19,cp.active?'#48f08a':'#ffcf45');if(cp.active){ctx.fillStyle='#48f08a';ctx.font='12px sans-serif';ctx.fillText('CHECKPOINT',cp.x-25,groundY-98)}});rect(goal.x,goal.y,6,105,'white');rect(goal.x+6,goal.y,50,28,'#ff536c');rect(goal.x+6,goal.y+14,50,14,'white');
+if(effects.big>0){ctx.strokeStyle='#ffdb4b';ctx.lineWidth=3;ctx.beginPath();ctx.arc(player.x+player.w/2,player.y+player.h/2,player.w,0,7);ctx.stroke()}
+if(!(player.invuln>0&&Math.floor(performance.now()/100)%2===0)){rect(player.x+2,player.y+9,24,29,'#173f91');rect(player.x+4,player.y+10,20,25,'#246bd3');rect(player.x+1,player.y,26,18,'#c97843');rect(player.x+2,player.y+1,24,15,'#ffb16b');rect(player.x,player.y,28,9,'#a92743');rect(player.x+2,player.y,24,7,'#e84b67');rect(player.x+5,player.y+18,7,8,'#fff7df');rect(player.x+18,player.y+18,7,8,'#fff7df');rect(player.x+7,player.y+20,4,5,'#17243b');rect(player.x+20,player.y+20,4,5,'#17243b');rect(player.x+4+(player.onGround&&Math.abs(player.vx)>0?Math.sin(performance.now()/65)*3:0),player.y+36,9,7,'#17243b');rect(player.x+17-(player.onGround&&Math.abs(player.vx)>0?Math.sin(performance.now()/65)*3:0),player.y+36,9,7,'#17243b');rect(player.x+6,player.y+35,5,2,'#f7f7ff');rect(player.x+19,player.y+35,5,2,'#f7f7ff')}
+ctx.restore()}
+function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function hit(){if(effects.shield>0){effects.shield--;toast('Schutzschild hat dich gerettet!');return}if(effects.invuln>0)return;lives--;updateHud();player.invuln=1.3;player.vy=-350;player.x=Math.max(checkpoint,player.x-55);toast('Autsch!');if(lives<=0){running=false;screen='over';$('overlay').style.display='flex';$('panel').innerHTML=`<h1>GAME OVER</h1><p>Punkte: ${score} · Münzen: ${coins}</p><div class="menuBtns"><button class="primary" id="retry">↻ NOCHMAL</button><button id="overShop">🛒 SHOP</button></div>`;$('retry').onclick=()=>{lives=3;score=0;makeLevel(1);updateHud();startGame()};$('overShop').onclick=()=>showShop()}}
+function update(dt){if(!running)return;dashCooldown=Math.max(0,dashCooldown-dt);let speed=effects.speed>0?390:290;player.vx=0;if(keys.left)player.vx=-speed;if(keys.right)player.vx=speed;if(jumpQueued&&player.jumps<2){player.vy=player.jumps===0?-520:-430;player.onGround=false;player.jumps++;if(player.jumps===2)toast('Doppelsprung!')}jumpQueued=false;let oldY=player.y;player.vy+=1850*dt;player.x+=player.vx*dt;player.y+=player.vy*dt;player.onGround=false;
+if(player.vy>=0){for(const p of platforms){if(player.x+player.w>p.x&&player.x<p.x+p.w&&oldY+player.h<=p.y+4&&player.y+player.h>=p.y){const wasFalling=!player.onGround;player.y=p.y-player.h;player.vy=0;player.onGround=true;player.jumps=0;if(wasFalling)landFx={x:player.x+player.w/2,y:p.y,life:.18};break}}}
+ if(landFx&&landFx.life>0)landFx.life-=dt;
+player.x=Math.max(0,Math.min(worldWidth-player.w,player.x));
+(window.gameCheckpoints||[]).forEach(cp=>{if(!cp.active&&player.x>=cp.x){cp.active=true;checkpoint=cp.x;toast('Checkpoint aktiviert!')}});
+enemies.forEach(e=>{if(e.dead)return;e.x+=e.v*e.dir*dt;if(e.x<e.min||e.x>e.max)e.dir*=-1;if(overlap(player,{x:e.x-17,y:e.y-15,w:34,h:28})){if(player.vy>100&&oldY+player.h<e.y-4){e.dead=true;player.vy=-390;score+=2}else hit()}});
+stars.forEach(s=>{if(s.got)return;let magnet=effects.magnet>0&&s.type==='coin';let box={x:s.x-12,y:s.y-12,w:24,h:24};if(magnet&&Math.abs(player.x-s.x)<130&&Math.abs(player.y-s.y)<130){s.x+=(player.x+player.w/2-s.x)*Math.min(1,dt*4);s.y+=(player.y+player.h/2-s.y)*Math.min(1,dt*4);box={x:s.x-12,y:s.y-12,w:24,h:24}}if(overlap(player,box)){s.got=true;if(s.type==='coin'){coins+=5;score++}else{coins+=10;score+=1}updateHud()}});
+if(player.invuln>0)player.invuln-=dt;for(const k of Object.keys(effects))if(effects[k]>0&&k!=='shield')effects[k]=Math.max(0,effects[k]-dt);
+if(player.y>H+100){if(effects.shield>0){effects.shield--;}else if(effects.invuln<=0){lives--;updateHud();}if(lives<=0){hit()}else{player.x=Math.max(0,checkpoint);player.y=groundY-100;player.vy=0;player.invuln=1.2;player.jumps=0;toast('Zurück zum Checkpoint!')}}
+if(player.x>checkpoint+300)checkpoint=player.x-80;
+if(overlap(player,{x:goal.x,y:goal.y,w:60,h:110})){if(level<15){score+=5;coins+=25;makeLevel(level+1);updateHud();toast('Level '+level+' geschafft! +25 Münzen')}else{running=false;screen='win';$('overlay').style.display='flex';$('panel').innerHTML=`<h1>🏆 GESCHAFFT!</h1><p>Alle 15 Level geschafft!<br>Punkte: ${score} · Münzen: ${coins}</p><div class="menuBtns"><button class="primary" id="again">NOCHMAL SPIELEN</button><button id="winShop">🛒 SHOP</button></div>`;$('again').onclick=()=>{score=0;lives=3;makeLevel(1);updateHud();startGame()};$('winShop').onclick=()=>showShop()}}
+camera=Math.max(0,Math.min(worldWidth-W,player.x-W*.34));
+/* Kamera folgt Sprüngen vertikal, bleibt aber beim tiefen Fallen stabil auf der normalen Ansicht. */
+const targetCameraY = (player.y < H*0.55) ? Math.max(0, H*0.55 - player.y) : 0;
+cameraY += (targetCameraY - cameraY) * Math.min(1, dt * 5);
+if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)$('toast').style.opacity=0}}
+function loop(t){let dt=Math.min((t-last)/1000||0,.032);last=t;update(dt);draw();requestAnimationFrame(loop)}
+function bind(id,key){const b=$(id);const down=e=>{e.preventDefault();keys[key]=true;b.style.filter='brightness(1.4)'};const up=e=>{e.preventDefault();keys[key]=false;b.style.filter=''};b.addEventListener('pointerdown',down);['pointerup','pointercancel','pointerleave'].forEach(v=>b.addEventListener(v,up))}
+bind('left','left');bind('right','right');
+function dash(){if(!running||dashCooldown>0)return;const dir=keys.left?-1:1;player.x=Math.max(0,Math.min(worldWidth-player.w,player.x+dir*145));dashCooldown=1.2;player.invuln=Math.max(player.invuln,.25);toast('⚡ Dash!')}
+$('dash').addEventListener('pointerdown',e=>{e.preventDefault();dash()});
+$('jump').addEventListener('pointerdown',e=>{e.preventDefault();jumpQueued=true});
+window.addEventListener('keydown',e=>{if(e.key==='Shift')dash();if(e.key==='ArrowLeft'||e.key==='a')keys.left=true;if(e.key==='ArrowRight'||e.key==='d')keys.right=true;if(e.key===' '||e.key==='ArrowUp'||e.key==='w')jumpQueued=true});
+window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.left=false;if(e.key==='ArrowRight'||e.key==='d')keys.right=false});
+$('shopQuick').onclick=()=>showShop();$('pauseQuick').onclick=pauseGame;window.addEventListener('resize',resize);makeLevel(1);resize();showHome();requestAnimationFrame(loop);
+})();
+</script></body></html>
